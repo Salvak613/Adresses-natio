@@ -1,0 +1,235 @@
+-- ============================================================================
+-- REQUETES AVANCEES
+-- ============================================================================
+
+-- ============================================================================
+-- 1. PROCEDURE STOCKEE : UPSERT ADRESSE
+-- ============================================================================
+-- Fonction qui insere ou met a jour une adresse complete
+-- Si l'adresse existe deja (meme id_ban), elle est mise a jour
+-- Sinon, elle est creee avec toutes les entites liees (departement, commune, code postal, voie, position)
+
+CREATE OR REPLACE FUNCTION upsert_adresse(
+    p_id_ban VARCHAR(24),
+    p_code_insee VARCHAR(5),
+    p_nom_commune VARCHAR(100),
+    p_code_postal VARCHAR(5),
+    p_libelle_acheminement VARCHAR(100),
+    p_id_fantoir VARCHAR(10),
+    p_nom_voie VARCHAR(100),
+    p_type_voie VARCHAR(50),
+    p_numero VARCHAR(10),
+    p_rep VARCHAR(10) DEFAULT NULL,
+    p_lon NUMERIC(10, 7) DEFAULT NULL,
+    p_lat NUMERIC(10, 7) DEFAULT NULL,
+    p_x NUMERIC(12, 2) DEFAULT NULL,
+    p_y NUMERIC(12, 2) DEFAULT NULL,
+    p_type_position VARCHAR(50) DEFAULT 'entree'
+) RETURNS INTEGER AS $$
+DECLARE
+    v_id_departement INTEGER;
+    v_id_commune INTEGER;
+    v_id_code_postal INTEGER;
+    v_id_voie INTEGER;
+    v_id_position INTEGER;
+    v_id_adresse INTEGER;
+BEGIN
+    -- Etape 1 : Creer ou recuperer le departement
+    INSERT INTO departement (code_departement, nom_departement)
+    VALUES (
+        LEFT(p_code_insee, 2),
+        'Département ' || LEFT(p_code_insee, 2)
+    )
+    ON CONFLICT (code_departement) DO NOTHING;
+
+    SELECT id INTO v_id_departement
+    FROM departement
+    WHERE code_departement = LEFT(p_code_insee, 2);
+
+    -- Etape 2 : Creer ou recuperer la commune
+    INSERT INTO commune (code_insee, nom_commune, nom_afnor, id_departement)
+    VALUES (p_code_insee, p_nom_commune, UPPER(p_nom_commune), v_id_departement)
+    ON CONFLICT (code_insee) DO NOTHING;
+
+    SELECT id INTO v_id_commune
+    FROM commune
+    WHERE code_insee = p_code_insee;
+
+    -- Etape 3 : Creer ou recuperer le code postal
+    INSERT INTO code_postal (code_postal, libelle_acheminement)
+    VALUES (p_code_postal, p_libelle_acheminement)
+    ON CONFLICT (code_postal) DO NOTHING;
+
+    SELECT id INTO v_id_code_postal
+    FROM code_postal
+    WHERE code_postal = p_code_postal;
+
+    -- Etape 4 : Creer la desserte postale (lien commune <-> code postal)
+    INSERT INTO desserte_postale (id_commune, id_code_postal)
+    VALUES (v_id_commune, v_id_code_postal)
+    ON CONFLICT (id_commune, id_code_postal) DO NOTHING;
+
+    -- Etape 5 : Creer ou recuperer la voie
+    INSERT INTO voie (id_fantoir, nom_voie, nom_afnor, type_voie, id_commune)
+    VALUES (p_id_fantoir, p_nom_voie, UPPER(p_nom_voie), p_type_voie, v_id_commune)
+    ON CONFLICT (id_fantoir) DO NOTHING;
+
+    SELECT id INTO v_id_voie
+    FROM voie
+    WHERE id_fantoir = p_id_fantoir;
+
+    -- Etape 6 : Creer ou recuperer la position (si coordonnees fournies)
+    IF p_lon IS NOT NULL AND p_lat IS NOT NULL THEN
+        INSERT INTO position (x, y, lon, lat, type_position)
+        VALUES (p_x, p_y, p_lon, p_lat, p_type_position)
+        ON CONFLICT (x, y, lon, lat) DO NOTHING;
+
+        SELECT id INTO v_id_position
+        FROM position
+        WHERE lon = p_lon AND lat = p_lat;
+    END IF;
+
+    -- Etape 7 : Inserer ou mettre a jour l'adresse
+    INSERT INTO adresse (id_ban, numero, rep, id_voie, id_position, certification_commune)
+    VALUES (p_id_ban, p_numero, p_rep, v_id_voie, v_id_position, TRUE)
+    ON CONFLICT (id_ban) DO UPDATE SET
+        numero = EXCLUDED.numero,
+        rep = EXCLUDED.rep,
+        id_voie = EXCLUDED.id_voie,
+        id_position = EXCLUDED.id_position;
+
+    SELECT id INTO v_id_adresse
+    FROM adresse
+    WHERE id_ban = p_id_ban;
+
+    -- Retourner l'ID de l'adresse creee ou mise a jour
+    RETURN v_id_adresse;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Exemple d'utilisation :
+-- SELECT upsert_adresse(
+--     '34172_test_001',            -- id_ban
+--     '34172',                     -- code_insee
+--     'Montpellier',               -- nom_commune
+--     '34000',                     -- code_postal
+--     'MONTPELLIER',               -- libelle_acheminement
+--     '34999test1',                -- id_fantoir
+--     'Rue de la République',      -- nom_voie
+--     'Rue',                       -- type_voie
+--     '42',                        -- numero
+--     'bis',                       -- rep
+--     3.876543,                    -- lon
+--     43.610769,                   -- lat
+--     767890.50,                   -- x
+--     6283456.75                   -- y
+-- );
+
+
+-- ============================================================================
+-- 2. TRIGGER : VALIDATION DES DONNEES AVANT INSERTION
+-- ============================================================================
+
+-- Fonction trigger pour valider les coordonnees GPS et le code postal
+CREATE OR REPLACE FUNCTION validate_data_before_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Validation des coordonnees GPS dans la table position
+    IF TG_TABLE_NAME = 'position' THEN
+        -- Verifier latitude : entre -90 et 90
+        IF NEW.lat IS NOT NULL AND (NEW.lat < -90 OR NEW.lat > 90) THEN
+            RAISE EXCEPTION 'Latitude invalide : % (doit être entre -90 et 90)', NEW.lat;
+        END IF;
+
+        -- Verifier longitude : entre -180 et 180
+        IF NEW.lon IS NOT NULL AND (NEW.lon < -180 OR NEW.lon > 180) THEN
+            RAISE EXCEPTION 'Longitude invalide : % (doit être entre -180 et 180)', NEW.lon;
+        END IF;
+    END IF;
+
+    -- Validation du format du code postal dans la table code_postal
+    IF TG_TABLE_NAME = 'code_postal' THEN
+        -- Verifier que le code postal est bien 5 chiffres
+        IF NEW.code_postal IS NOT NULL AND NEW.code_postal !~ '^[0-9]{5}$' THEN
+            RAISE EXCEPTION 'Code postal invalide : % (doit être exactement 5 chiffres)', NEW.code_postal;
+        END IF;
+    END IF;
+
+    -- Si tout est valide, on retourne la nouvelle ligne
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Attacher le trigger a la table position (BEFORE INSERT et UPDATE)
+DROP TRIGGER IF EXISTS trg_validate_position ON position;
+CREATE TRIGGER trg_validate_position
+    BEFORE INSERT OR UPDATE ON position
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_data_before_insert();
+
+-- Attacher le trigger a la table code_postal (BEFORE INSERT et UPDATE)
+DROP TRIGGER IF EXISTS trg_validate_code_postal ON code_postal;
+CREATE TRIGGER trg_validate_code_postal
+    BEFORE INSERT OR UPDATE ON code_postal
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_data_before_insert();
+
+-- Test de validation :
+-- INSERT INTO position (lon, lat, type_position) VALUES (200, 50, 'entree');  -- ERREUR : lon > 180
+-- INSERT INTO position (lon, lat, type_position) VALUES (3.5, 100, 'entree'); -- ERREUR : lat > 90
+-- INSERT INTO code_postal (code_postal, libelle_acheminement) VALUES ('123', 'TEST'); -- ERREUR : pas 5 chiffres
+
+
+-- ============================================================================
+-- 3. TRIGGER : AJOUT AUTOMATIQUE DES DATES DE CREATION/MODIFICATION
+-- ============================================================================
+
+-- Etape 1 : Ajouter les colonnes de dates aux tables concernees
+ALTER TABLE adresse ADD COLUMN IF NOT EXISTS date_creation TIMESTAMP DEFAULT NOW();
+ALTER TABLE adresse ADD COLUMN IF NOT EXISTS date_maj TIMESTAMP DEFAULT NOW();
+
+ALTER TABLE voie ADD COLUMN IF NOT EXISTS date_creation TIMESTAMP DEFAULT NOW();
+ALTER TABLE voie ADD COLUMN IF NOT EXISTS date_maj TIMESTAMP DEFAULT NOW();
+
+ALTER TABLE commune ADD COLUMN IF NOT EXISTS date_creation TIMESTAMP DEFAULT NOW();
+ALTER TABLE commune ADD COLUMN IF NOT EXISTS date_maj TIMESTAMP DEFAULT NOW();
+
+-- Fonction trigger pour gerer automatiquement les dates
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Lors d'un INSERT : date_creation est deja definie par DEFAULT NOW()
+    -- Lors d'un UPDATE : on met a jour date_modification
+    IF TG_OP = 'UPDATE' THEN
+        NEW.date_modification = NOW();
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Attacher le trigger a la table adresse
+DROP TRIGGER IF EXISTS trg_adresse_timestamp ON adresse;
+CREATE TRIGGER trg_adresse_timestamp
+    BEFORE UPDATE ON adresse
+    FOR EACH ROW
+    EXECUTE FUNCTION update_timestamp();
+
+-- Attacher le trigger a la table voie
+DROP TRIGGER IF EXISTS trg_voie_timestamp ON voie;
+CREATE TRIGGER trg_voie_timestamp
+    BEFORE UPDATE ON voie
+    FOR EACH ROW
+    EXECUTE FUNCTION update_timestamp();
+
+-- Attacher le trigger a la table commune
+DROP TRIGGER IF EXISTS trg_commune_timestamp ON commune;
+CREATE TRIGGER trg_commune_timestamp
+    BEFORE UPDATE ON commune
+    FOR EACH ROW
+    EXECUTE FUNCTION update_timestamp();
+
+-- Test de fonctionnement :
+-- UPDATE adresse SET numero = '43' WHERE id_ban = '34001_0001_00001';
+-- SELECT id_ban, numero, date_creation, date_modification FROM adresse WHERE id_ban = '34001_0001_00001';
+-- La date_modification sera automatiquement mise a jour avec l'heure actuelle

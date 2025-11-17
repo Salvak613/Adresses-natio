@@ -1,0 +1,56 @@
+
+
+-- ============================================================================
+-- 1. Nombre moyen d'adresses par commune et par voie
+-- ============================================================================
+
+-- Nombre moyen d'adresses par commune
+SELECT AVG(nb_adresses) as moyenne_adresses_par_commune
+FROM (
+    SELECT c.nom_commune, COUNT(a.id) as nb_adresses
+    FROM commune c
+    JOIN voie v ON v.id_commune = c.id
+    JOIN adresse a ON a.id_voie = v.id
+    GROUP BY c.nom_commune
+) AS stats_communes;
+
+-- Nombre moyen d'adresses par voie
+SELECT AVG(nb_adresses) as moyenne_adresses_par_voie
+FROM (
+    SELECT v.nom_voie, COUNT(a.id) as nb_adresses
+    FROM voie v
+    JOIN adresse a ON a.id_voie = v.id
+    GROUP BY v.id
+) AS stats_voies;
+
+
+-- ============================================================================
+-- 2. Top 10 des communes avec le plus d'adresses
+-- ============================================================================
+
+SELECT
+    c.nom_commune,
+    COUNT(a.id) as nb_adresses
+FROM commune c
+JOIN voie v ON v.id_commune = c.id
+JOIN adresse a ON a.id_voie = v.id
+GROUP BY c.nom_commune
+ORDER BY nb_adresses DESC
+LIMIT 10;
+
+
+-- ============================================================================
+-- 3. Verifier la completude des champs essentiels (numero, voie, code postal, commune)
+-- ============================================================================
+
+-- Comptage des adresses avec champs manquants
+SELECT
+    COUNT(*) FILTER (WHERE a.numero IS NULL OR TRIM(a.numero) = '') as nb_sans_numero,
+    COUNT(*) FILTER (WHERE a.id_voie IS NULL) as nb_sans_voie,
+    COUNT(*) FILTER (WHERE dp.id_code_postal IS NULL) as nb_sans_code_postal,
+    COUNT(*) FILTER (WHERE c.id IS NULL) as nb_sans_commune,
+    COUNT(*) as nb_total_adresses
+FROM adresse a
+LEFT JOIN voie v ON a.id_voie = v.id
+LEFT JOIN commune c ON v.id_commune = c.id
+LEFT JOIN desserte_postale dp ON c.id = dp.id_commune;

@@ -1,0 +1,108 @@
+
+-- ============================================================================
+-- 1. Lister toutes les adresses d'une commune donnée, triées par voie
+-- ============================================================================
+
+-- Recherche par nom de commune
+SELECT
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    c.nom_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+WHERE c.nom_commune = 'Abeilhan'  -- A remplacer par ce qu'on veut
+ORDER BY v.nom_voie, a.numero::INTEGER;
+
+-- Recherche par code INSEE
+SELECT
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    c.nom_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+WHERE c.code_insee = '34001'  -- A remplacer par ce qu'on veut
+ORDER BY v.nom_voie, a.numero::INTEGER;
+
+
+-- ============================================================================
+-- 2. Compter le nombre d'adresses par commune
+-- ============================================================================
+
+-- Comptage global par commune
+SELECT
+    c.nom_commune,
+    COUNT(a.id) as nb_adresses
+FROM commune c
+JOIN voie v ON v.id_commune = c.id
+JOIN adresse a ON a.id_voie = v.id
+GROUP BY c.nom_commune
+ORDER BY nb_adresses DESC;
+
+-- BONUS : Comptage par commune ET par voie
+SELECT
+    c.nom_commune,
+    v.nom_voie,
+    COUNT(a.id) as nb_adresses
+FROM commune c
+JOIN voie v ON v.id_commune = c.id
+JOIN adresse a ON a.id_voie = v.id
+GROUP BY c.nom_commune, v.nom_voie
+ORDER BY c.nom_commune, nb_adresses DESC;
+
+
+-- ============================================================================
+-- 3. Lister toutes les communes distinctes présentes dans le fichier
+-- ============================================================================
+
+-- Liste simple des communes
+SELECT
+    c.code_insee,
+    c.nom_commune
+FROM commune c
+ORDER BY c.nom_commune;
+
+
+-- ============================================================================
+-- 4. Rechercher toutes les adresses contenant un mot-clé dans le nom de voie
+-- ============================================================================
+
+-- Recherche simple par mot-cle
+SELECT
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    c.nom_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+WHERE v.nom_voie ILIKE '%Boulevard%'  -- Remplacer "Boulevard" par le mot-cle souhaite
+ORDER BY v.nom_voie, c.nom_commune;
+
+-- Recherche par type de voie
+SELECT
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    c.nom_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+WHERE v.type_voie = 'Rue'  -- Valeurs possibles : Rue, Avenue, Boulevard, Place, Chemin, Route, Allee, Impasse, Cours, Quai
+ORDER BY v.nom_voie, c.nom_commune;
+
+
+-- ============================================================================
+-- 5. Identifier les adresses où le code postal est vide alors que la commune est renseignée
+-- ============================================================================
+
+-- Adresses sans code postal
+SELECT
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    c.nom_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+LEFT JOIN desserte_postale dp ON c.id = dp.id_commune
+WHERE dp.id_code_postal IS NULL
+ORDER BY c.nom_commune, v.nom_voie;

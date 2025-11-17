@@ -1,0 +1,205 @@
+
+
+-- ============================================================================
+-- 1. Ajouter les infos necessaires
+-- ============================================================================
+
+
+
+-- Etape 1 : Creer le departement si besoin
+INSERT INTO departement (code_departement, nom_departement)
+VALUES ('34', 'Herault')
+ON CONFLICT (code_departement) DO NOTHING;
+
+-- Etape 2 : Creer la commune si besoin
+INSERT INTO commune (code_insee, nom_commune, nom_afnor, id_departement)
+SELECT
+    '34172',                    -- Code INSEE
+    'Montpellier',              -- Nom de la commune
+    'MONTPELLIER',              -- Nom AFNOR
+    d.id
+FROM departement d
+WHERE d.code_departement = '34'
+ON CONFLICT (code_insee) DO NOTHING;
+
+-- Etape 3 : Creer le code postal si besoin
+INSERT INTO code_postal (code_postal, libelle_acheminement)
+VALUES ('34000', 'MONTPELLIER')
+ON CONFLICT (code_postal) DO NOTHING;
+
+-- Etape 4 : Creer la desserte postale (lien commune <-> code postal)
+INSERT INTO desserte_postale (id_commune, id_code_postal)
+SELECT c.id, cp.id
+FROM commune c, code_postal cp
+WHERE c.code_insee = '34172' AND cp.code_postal = '34000'
+ON CONFLICT (id_commune, id_code_postal) DO NOTHING;
+
+-- Etape 5 : Creer la voie si besoin
+INSERT INTO voie (id_fantoir, nom_voie, nom_afnor, type_voie, id_commune)
+SELECT
+    '34172_test1',             -- ID FANTOIR unique
+    'Rue de la Republique',     -- Nom de la voie
+    'RUE DE LA REPUBLIQUE',     -- Nom AFNOR
+    'Rue',                      -- Type de voie
+    c.id
+FROM commune c
+WHERE c.code_insee = '34172'
+ON CONFLICT (id_fantoir) DO NOTHING;
+
+-- Etape 6 : Creer la position GPS
+INSERT INTO position (x, y, lon, lat, type_position)
+VALUES (767890.50, 6283456.75, 3.876543, 43.610769, 'entree')
+ON CONFLICT DO NOTHING;
+
+-- Etape 7 : Creer l'adresse finale
+INSERT INTO adresse (id_ban, numero, rep, id_voie, id_position, certification_commune)
+SELECT
+    '34172_nouvelle_adresse_001',  -- ID BAN unique
+    '42',                           -- Numero
+    'bis',                          -- Repetition (NULL si absent)
+    v.id,
+    p.id,
+    TRUE
+FROM voie v, position p
+WHERE v.id_fantoir = '34172_abc123'
+  AND p.lon = 3.876543 AND p.lat = 43.610769
+ON CONFLICT (id_ban) DO NOTHING;
+
+
+
+-- ==================================================
+-- Ajouter une nouvelle adresse complete en une fois
+-- ===================================================
+
+DO $$
+DECLARE
+    -- ====== MODIFIEZ UNIQUEMENT CES VALEURS ======
+    v_code_dept VARCHAR(5) := '34';
+    v_nom_dept VARCHAR(100) := 'Herault';
+    v_code_insee VARCHAR(5) := '34999';
+    v_nom_commune VARCHAR(100) := 'Nouvelle Commune';
+    v_code_postal VARCHAR(5) := '34999';
+    v_libelle_acheminement VARCHAR(100) := 'NOUVELLE COMMUNE';
+    v_id_fantoir VARCHAR(10) := '34999test1';
+    v_nom_voie VARCHAR(100) := 'Avenue des Tests';
+    v_type_voie VARCHAR(50) := 'Avenue';
+    v_id_ban VARCHAR(24) := '34999_test_001';
+    v_numero VARCHAR(10) := '1';
+    v_rep VARCHAR(10) := NULL;
+    v_x NUMERIC(12, 2) := 700000.00;
+    v_y NUMERIC(12, 2) := 6200000.00;
+    v_lon NUMERIC(10, 7) := 3.500000;
+    v_lat NUMERIC(10, 7) := 43.500000;
+    v_type_position VARCHAR(50) := 'entrée';
+    -- =============================================
+BEGIN
+    -- 1. Departement
+    INSERT INTO departement (code_departement, nom_departement)
+    VALUES (v_code_dept, v_nom_dept)
+    ON CONFLICT (code_departement) DO NOTHING;
+
+    -- 2. Commune
+    INSERT INTO commune (code_insee, nom_commune, nom_afnor, id_departement)
+    VALUES (
+        v_code_insee,
+        v_nom_commune,
+        UPPER(v_nom_commune),
+        (SELECT id FROM departement WHERE code_departement = v_code_dept)
+    )
+    ON CONFLICT (code_insee) DO NOTHING;
+
+    -- 3. Code postal
+    INSERT INTO code_postal (code_postal, libelle_acheminement)
+    VALUES (v_code_postal, v_libelle_acheminement)
+    ON CONFLICT (code_postal) DO NOTHING;
+
+    -- 4. Desserte postale
+    INSERT INTO desserte_postale (id_commune, id_code_postal)
+    VALUES (
+        (SELECT id FROM commune WHERE code_insee = v_code_insee),
+        (SELECT id FROM code_postal WHERE code_postal = v_code_postal)
+    )
+    ON CONFLICT (id_commune, id_code_postal) DO NOTHING;
+
+    -- 5. Voie
+    INSERT INTO voie (id_fantoir, nom_voie, nom_afnor, type_voie, id_commune)
+    VALUES (
+        v_id_fantoir,
+        v_nom_voie,
+        UPPER(v_nom_voie),
+        v_type_voie,
+        (SELECT id FROM commune WHERE code_insee = v_code_insee)
+    )
+    ON CONFLICT (id_fantoir) DO NOTHING;
+
+    -- 6. Position
+    INSERT INTO position (x, y, lon, lat, type_position)
+    VALUES (v_x, v_y, v_lon, v_lat, v_type_position)
+    ON CONFLICT (x, y, lon, lat) DO NOTHING;
+
+    -- 7. Adresse
+    INSERT INTO adresse (id_ban, numero, rep, id_voie, id_position, certification_commune)
+    VALUES (
+        v_id_ban,
+        v_numero,
+        v_rep,
+        (SELECT id FROM voie WHERE id_fantoir = v_id_fantoir),
+        (SELECT id FROM position WHERE lon = v_lon AND lat = v_lat LIMIT 1),
+        TRUE
+    )
+    ON CONFLICT (id_ban) DO NOTHING;
+
+    RAISE NOTICE 'Adresse créée avec succès : % % %, % %', v_numero, v_rep, v_nom_voie, v_code_postal, v_nom_commune;
+END $$;
+
+
+-- ============================================================================
+-- 2. METTRE A JOUR LE NOM D'UNE VOIE POUR UNE ADRESSE SPECIFIQUE
+-- ============================================================================
+
+-- Mise a jour du nom de voie (affecte TOUTES les adresses de cette voie)
+UPDATE voie
+SET nom_voie = 'Rue Victor Hugo',
+    nom_afnor = 'RUE VICTOR HUGO',
+    type_voie = 'Rue'
+WHERE id_fantoir = '34001_y6j5d7';
+
+-- Verifier les adresses impactees
+SELECT
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    c.nom_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+WHERE v.id_fantoir = '34001_y6j5d7';
+
+
+-- ============================================================================
+-- 3. SUPPRIMER LES ADRESSES AVEC CHAMPS MANQUANTS CRITIQUES
+-- ============================================================================
+
+-- 3.1 Lister les adresses avec numero vide AVANT suppression
+SELECT
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    c.nom_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+WHERE a.numero IS NULL OR TRIM(a.numero) = '';
+
+-- 3.2 Compter combien seront supprimees
+SELECT COUNT(*) as nb_adresses_a_supprimer
+FROM adresse
+WHERE numero IS NULL OR TRIM(numero) = '';
+
+-- 3.3 Supprimer les adresses avec numero vide
+DELETE FROM adresse
+WHERE numero IS NULL OR TRIM(numero) = '';
+
+-- 3.4 Supprimer les adresses sans voie ET sans lieu-dit
+DELETE FROM adresse
+WHERE id_voie IS NULL AND (nom_ld IS NULL OR TRIM(nom_ld) = '');
+
+

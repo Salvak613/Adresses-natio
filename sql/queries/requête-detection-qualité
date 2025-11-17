@@ -1,0 +1,69 @@
+================================================================
+
+-- ============================================================================
+-- 1. Identifier doublons exacts (memes numero + nom de voie + code postal + commune)
+-- ============================================================================
+
+SELECT
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    cp.code_postal,
+    c.nom_commune,
+    COUNT(*) as nb_doublons
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+JOIN desserte_postale dp ON c.id = dp.id_commune
+JOIN code_postal cp ON dp.id_code_postal = cp.id
+GROUP BY a.numero, a.rep, v.nom_voie, cp.code_postal, c.nom_commune
+HAVING COUNT(*) > 1
+ORDER BY nb_doublons DESC, c.nom_commune;
+
+-- Ou en affichant toutes les lignes 
+
+SELECT
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    cp.code_postal,
+    c.nom_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+JOIN desserte_postale dp ON c.id = dp.id_commune
+JOIN code_postal cp ON dp.id_code_postal = cp.id
+ORDER BY c.nom_commune, v.nom_voie, a.numero::INTEGER, a.rep;
+
+
+-- ============================================================================
+-- 2. Identifier les adresses incoherentes sans coordonnees GPS
+-- ============================================================================
+
+SELECT
+    a.id_ban,
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    c.nom_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+JOIN position p ON a.id_position = p.id
+WHERE p.lat IS NULL OR p.lon IS NULL
+ORDER BY c.nom_commune, v.nom_voie;
+
+
+-- ============================================================================
+-- 3. Lister les codes postaux avec plus de 10 000 adresses (anomalies volumetriques)
+-- ============================================================================
+
+SELECT
+    cp.code_postal,
+    cp.libelle_acheminement,
+    COUNT(DISTINCT a.id) as nb_adresses
+FROM code_postal cp
+JOIN desserte_postale dp ON cp.id = dp.id_code_postal
+JOIN commune c ON dp.id_commune = c.id
+JOIN voie v ON v.id_commune = c.id
+JOIN adresse a ON a.id_voie = v.id
+GROUP BY cp.code_postal, cp.libelle_acheminement
+HAVING COUNT(DISTINCT a.id) > 10000
+ORDER BY nb_adresses DESC;

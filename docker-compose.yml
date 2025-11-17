@@ -1,0 +1,43 @@
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: config/Dockerfile
+    container_name: ddb_postgre_natio
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: adresses_natio
+    ports:
+      - "5433:5432"
+    volumes:
+      # Sauvegarde des données PostgreSQL
+      - postgres_data:/var/lib/postgresql/data
+
+      # Scripts exécutés automatiquement au démarrage (ordre alphabétique)
+      # 1. Téléchargement du CSV depuis data.gouv.fr
+      - ./sql/init/00-download.sql:/docker-entrypoint-initdb.d/00-download.sql
+
+      # 2. Import des données brutes du CSV
+      - ./sql/init/01-import-csv.sql:/docker-entrypoint-initdb.d/01-import-csv.sql
+
+      # 3. Création des tables normalisées
+      - ./sql/init/02-schema.sql:/docker-entrypoint-initdb.d/02-schema.sql
+
+      # 4. Requêtes avancées (procédures stockées et triggers)
+      - ./sql/init/03-requetes-avancees.sql:/docker-entrypoint-initdb.d/03-requetes-avancees.sql
+
+      # 5. Transformation des données
+      - ./sql/init/04-transformation.sql:/docker-entrypoint-initdb.d/04-transformation.sql
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d adresses_natio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local

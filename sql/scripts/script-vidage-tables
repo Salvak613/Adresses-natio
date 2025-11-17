@@ -1,0 +1,60 @@
+
+-- Script de vidage complet de toutes les tables
+
+
+-- Désactiver temporairement les contraintes de clés étrangères pour éviter les erreurs
+SET session_replication_role = 'replica';
+
+-- Vider toutes les tables dans l'ordre inverse des dépendances
+TRUNCATE TABLE adresse CASCADE;
+TRUNCATE TABLE position CASCADE;
+TRUNCATE TABLE alias CASCADE;
+TRUNCATE TABLE voie CASCADE;
+TRUNCATE TABLE commune_ancienne CASCADE;
+TRUNCATE TABLE desserte_postale CASCADE;
+TRUNCATE TABLE code_postal CASCADE;
+TRUNCATE TABLE commune CASCADE;
+TRUNCATE TABLE departement CASCADE;
+
+-- Réactiver les contraintes de clés étrangères
+SET session_replication_role = 'origin';
+
+-- Réinitialiser toutes les séquences à 1
+ALTER SEQUENCE departement_id_seq RESTART WITH 1;
+ALTER SEQUENCE commune_id_seq RESTART WITH 1;
+ALTER SEQUENCE code_postal_id_seq RESTART WITH 1;
+ALTER SEQUENCE desserte_postale_id_seq RESTART WITH 1;
+ALTER SEQUENCE commune_ancienne_id_seq RESTART WITH 1;
+ALTER SEQUENCE voie_id_seq RESTART WITH 1;
+ALTER SEQUENCE alias_id_seq RESTART WITH 1;
+ALTER SEQUENCE position_id_seq RESTART WITH 1;
+ALTER SEQUENCE adresse_id_seq RESTART WITH 1;
+
+-- Vérifier que toutes les tables sont vides
+SELECT 'departement' as table_name, COUNT(*) as nb_lignes FROM departement
+UNION ALL
+SELECT 'commune', COUNT(*) FROM commune
+UNION ALL
+SELECT 'code_postal', COUNT(*) FROM code_postal
+UNION ALL
+SELECT 'desserte_postale', COUNT(*) FROM desserte_postale
+UNION ALL
+SELECT 'commune_ancienne', COUNT(*) FROM commune_ancienne
+UNION ALL
+SELECT 'voie', COUNT(*) FROM voie
+UNION ALL
+SELECT 'alias', COUNT(*) FROM alias
+UNION ALL
+SELECT 'position', COUNT(*) FROM position
+UNION ALL
+SELECT 'adresse', COUNT(*) FROM adresse
+ORDER BY table_name;
+
+-- Message de confirmation
+DO $$
+BEGIN
+    RAISE NOTICE '============================================';
+    RAISE NOTICE '✅ Toutes les tables ont été vidées !';
+    RAISE NOTICE '✅ Les séquences ont été réinitialisées !';
+    RAISE NOTICE '============================================';
+END $$;

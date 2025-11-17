@@ -1,0 +1,237 @@
+-- ============================================================================
+-- Script d'insertion d'un échantillon de test RÉALISTE
+-- Basé sur les vraies données CSV de la BAN (Abeilhan, 34)
+-- ============================================================================
+
+-- Nettoyage
+TRUNCATE TABLE adresse, position, alias, voie, commune_ancienne, desserte_postale, code_postal, commune, departement RESTART IDENTITY CASCADE;
+
+-- ============================================================================
+-- 1. DÉPARTEMENTS
+-- ============================================================================
+
+INSERT INTO departement (code_departement, nom_departement) VALUES
+('34', 'Hérault');
+
+-- ============================================================================
+-- 2. COMMUNES
+-- ============================================================================
+
+INSERT INTO commune (code_insee, nom_commune, nom_afnor, id_departement) VALUES
+('34001', 'Abeilhan', 'ABEILHAN', 1);
+
+-- ============================================================================
+-- 3. CODES POSTAUX
+-- ============================================================================
+
+INSERT INTO code_postal (code_postal, libelle_acheminement) VALUES
+('34290', 'ABEILHAN');
+
+-- ============================================================================
+-- 4. DESSERTE POSTALE
+-- ============================================================================
+
+INSERT INTO desserte_postale (id_commune, id_code_postal) VALUES
+(1, 1);  -- Abeilhan - 34290
+
+-- ============================================================================
+-- 5. VOIES
+-- ============================================================================
+
+INSERT INTO voie (id_fantoir, nom_voie, nom_afnor, type_voie, id_commune) VALUES
+('34001_y6j5d7', 'Rue Victor Hugo', 'RUE VICTOR HUGO', 'Rue', 1),
+('34001_k2qiyl', 'Rue Marechal Leclerc', 'RUE MARECHAL LECLERC', 'Rue', 1),
+('34001_8puk9m', 'chemin rural n°33', 'CHEMIN RURAL N 33', 'Chemin', 1),
+('34001_0223', 'Impasse Jean Philippe Rameau', 'IMPASSE JEAN PHILIPPE RAMEAU', 'Impasse', 1),
+('34001_B020', 'Chemin de l''Etang', 'CHEMIN DE L ETANG', 'Chemin', 1);
+
+-- ============================================================================
+-- 6. POSITIONS (échantillon représentatif)
+-- ============================================================================
+
+INSERT INTO position (x, y, lon, lat, type_position) VALUES
+-- Rue Victor Hugo (12 adresses)
+(723882.07, 6261214.25, 3.294911, 43.449629, 'entrée'),   -- 1
+(723881.36, 6261209.47, 3.294902, 43.449586, 'entrée'),   -- 2
+(723882.10, 6261205.24, 3.294911, 43.449548, 'entrée'),   -- 3
+(723882.93, 6261200.02, 3.294921, 43.449501, 'entrée'),   -- 4
+(723883.36, 6261194.36, 3.294926, 43.44945, 'entrée'),    -- 5
+(723885.24, 6261189.58, 3.294949, 43.449407, 'entrée'),   -- 6
+(723884.93, 6261185.14, 3.294945, 43.449367, 'entrée'),   -- 7
+(723887.47, 6261178.37, 3.294976, 43.449306, 'entrée'),   -- 8
+(723887.89, 6261172.14, 3.294981, 43.44925, 'entrée'),    -- 9
+(723893.42, 6261166.94, 3.295049, 43.449203, 'entrée'),   -- 10
+(723897.50, 6261159.51, 3.295099, 43.449136, 'entrée'),   -- 11
+(723900.84, 6261152.41, 3.29514, 43.449072, 'entrée'),    -- 12
+
+-- Rue Marechal Leclerc (échantillon de 10)
+(723835.52, 6261276.21, 3.294339, 43.450188, 'entrée'),   -- 1
+(723826.63, 6261313.41, 3.294231, 43.450523, 'entrée'),   -- 2
+(723845.84, 6261265.35, 3.294466, 43.45009, 'entrée'),    -- 3
+(723833.01, 6261297.32, 3.294309, 43.450378, 'entrée'),   -- 4
+(723849.42, 6261260.03, 3.29451, 43.450042, 'entrée'),    -- 5
+(723836.11, 6261291.22, 3.294347, 43.450323, 'entrée'),   -- 6
+(723853.41, 6261254.27, 3.294559, 43.44999, 'entrée'),    -- 7
+(723840.51, 6261284.34, 3.294401, 43.450261, 'entrée'),   -- 8
+(723856.83, 6261249.17, 3.294601, 43.449944, 'entrée'),   -- 9
+(723841.45, 6261271.45, 3.294412, 43.450145, 'entrée'),   -- 1 bis
+
+-- Chemin rural n°33
+(723604.81, 6261273.80, 3.29149, 43.450174, 'entrée'),    -- 2
+(723577.43, 6261275.70, 3.291152, 43.450192, 'entrée'),   -- 4
+
+-- Impasse Jean Philippe Rameau
+(723658.27, 6260984.88, 3.292137, 43.447573, 'entrée'),   -- 1
+(723646.25, 6260973.84, 3.291988, 43.447474, 'entrée'),   -- 2
+(723651.37, 6260989.53, 3.292052, 43.447615, 'segment'),  -- 3
+(723615.69, 6260937.15, 3.291609, 43.447145, 'segment'),  -- 4
+(723626.90, 6260928.75, 3.291747, 43.447069, 'entrée'),   -- 6
+
+-- Chemin de l'Etang
+(723652.77, 6261443.59, 3.29209, 43.4517, 'entrée'),      -- 1
+(723622.68, 6261456.82, 3.291719, 43.45182, 'entrée'),    -- 2
+(723643.17, 6261456.56, 3.291972, 43.451817, 'entrée'),   -- 3
+(723578.41, 6261493.56, 3.291174, 43.452152, 'segment'),  -- 4
+(723561.99, 6261509.73, 3.290972, 43.452298, 'segment');  -- 6
+
+-- ============================================================================
+-- 7. ADRESSES
+-- ============================================================================
+
+INSERT INTO adresse (
+    id_ban, numero, rep, nom_ld, cad_parcelles, 
+    certification_commune, source_position, source_nom_voie, 
+    id_voie, id_position
+) VALUES
+-- Rue Victor Hugo (12 adresses)
+('34001_y6j5d7_00001', '1', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 1),
+('34001_y6j5d7_00002', '2', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 2),
+('34001_y6j5d7_00003', '3', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 3),
+('34001_y6j5d7_00004', '4', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 4),
+('34001_y6j5d7_00005', '5', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 5),
+('34001_y6j5d7_00006', '6', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 6),
+('34001_y6j5d7_00007', '7', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 7),
+('34001_y6j5d7_00008', '8', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 8),
+('34001_y6j5d7_00009', '9', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 9),
+('34001_y6j5d7_00010', '10', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 10),
+('34001_y6j5d7_00011', '11', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 11),
+('34001_y6j5d7_00012', '12', NULL, NULL, NULL, TRUE, 'commune', 'commune', 1, 12),
+
+-- Rue Marechal Leclerc (10 adresses dont 1 bis)
+('34001_k2qiyl_00001', '1', NULL, NULL, '340010000B0911', TRUE, 'commune', 'commune', 2, 13),
+('34001_k2qiyl_00002', '2', NULL, NULL, '340010000B1869', TRUE, 'commune', 'commune', 2, 14),
+('34001_k2qiyl_00003', '3', NULL, NULL, '340010000B0916', TRUE, 'commune', 'commune', 2, 15),
+('34001_k2qiyl_00004', '4', NULL, NULL, '340010000B0942', TRUE, 'commune', 'commune', 2, 16),
+('34001_k2qiyl_00005', '5', NULL, NULL, '340010000B0917', TRUE, 'commune', 'commune', 2, 17),
+('34001_k2qiyl_00006', '6', NULL, NULL, '340010000B0941', TRUE, 'commune', 'commune', 2, 18),
+('34001_k2qiyl_00007', '7', NULL, NULL, '340010000B1333', TRUE, 'commune', 'commune', 2, 19),
+('34001_k2qiyl_00008', '8', NULL, NULL, '340010000B0940', TRUE, 'commune', 'commune', 2, 20),
+('34001_k2qiyl_00009', '9', NULL, NULL, '340010000B0919', TRUE, 'commune', 'commune', 2, 21),
+('34001_k2qiyl_00001_bis', '1', 'bis', NULL, '340010000B0912', TRUE, 'commune', 'commune', 2, 22),
+
+-- Chemin rural n°33 (2 adresses)
+('34001_8puk9m_00002', '2', NULL, NULL, NULL, TRUE, 'commune', 'commune', 3, 23),
+('34001_8puk9m_00004', '4', NULL, NULL, NULL, TRUE, 'commune', 'commune', 3, 24),
+
+-- Impasse Jean Philippe Rameau (5 adresses)
+('34001_0223_00001', '1', NULL, NULL, '340010000B2079', TRUE, 'commune', 'commune', 4, 25),
+('34001_0223_00002', '2', NULL, NULL, NULL, TRUE, 'commune', 'commune', 4, 26),
+('34001_0223_00003', '3', NULL, NULL, NULL, TRUE, 'commune', 'commune', 4, 27),
+('34001_0223_00004', '4', NULL, NULL, NULL, TRUE, 'commune', 'commune', 4, 28),
+('34001_0223_00006', '6', NULL, NULL, '340010000B2071', TRUE, 'commune', 'commune', 4, 29),
+
+-- Chemin de l'Etang (5 adresses)
+('34001_b020_00001', '1', NULL, NULL, NULL, TRUE, 'commune', 'commune', 5, 30),
+('34001_b020_00002', '2', NULL, NULL, NULL, TRUE, 'commune', 'commune', 5, 31),
+('34001_b020_00003', '3', NULL, NULL, NULL, TRUE, 'commune', 'commune', 5, 32),
+('34001_b020_00004', '4', NULL, NULL, NULL, TRUE, 'commune', 'commune', 5, 33),
+('34001_b020_00006', '6', NULL, NULL, NULL, TRUE, 'commune', 'commune', 5, 34);
+
+-- ============================================================================
+-- VÉRIFICATIONS
+-- ============================================================================
+
+-- Compter les enregistrements
+SELECT 'departement' as table_name, COUNT(*) as nb_lignes FROM departement
+UNION ALL
+SELECT 'commune', COUNT(*) FROM commune
+UNION ALL
+SELECT 'code_postal', COUNT(*) FROM code_postal
+UNION ALL
+SELECT 'desserte_postale', COUNT(*) FROM desserte_postale
+UNION ALL
+SELECT 'voie', COUNT(*) FROM voie
+UNION ALL
+SELECT 'alias', COUNT(*) FROM alias
+UNION ALL
+SELECT 'position', COUNT(*) FROM position
+UNION ALL
+SELECT 'adresse', COUNT(*) FROM adresse
+ORDER BY table_name;
+
+-- Afficher toutes les adresses avec leurs infos complètes
+SELECT 
+    a.id_ban,
+    CONCAT(a.numero, COALESCE(' ' || a.rep, '')) as numero_complet,
+    v.nom_voie,
+    c.nom_commune,
+    d.nom_departement,
+    cp.code_postal,
+    ROUND(p.lat::numeric, 6) as latitude,
+    ROUND(p.lon::numeric, 6) as longitude,
+    p.type_position,
+    a.cad_parcelles,
+    a.certification_commune
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN commune c ON v.id_commune = c.id
+JOIN departement d ON c.id_departement = d.id
+JOIN position p ON a.id_position = p.id
+LEFT JOIN desserte_postale dp ON c.id = dp.id_commune
+LEFT JOIN code_postal cp ON dp.id_code_postal = cp.id
+ORDER BY v.nom_voie, a.numero::INTEGER, a.rep;
+
+-- Statistiques par voie
+SELECT 
+    v.nom_voie,
+    v.type_voie,
+    COUNT(a.id) as nb_adresses,
+    MIN(a.numero::INTEGER) as premier_numero,
+    MAX(a.numero::INTEGER) as dernier_numero
+FROM voie v
+LEFT JOIN adresse a ON v.id = a.id_voie
+GROUP BY v.id, v.nom_voie, v.type_voie
+ORDER BY v.nom_voie;
+
+-- Vérifier les types de position
+SELECT 
+    type_position,
+    COUNT(*) as nb_positions
+FROM position
+GROUP BY type_position
+ORDER BY nb_positions DESC;
+
+-- Afficher une carte ASCII des coordonnées (zoom sur Rue Victor Hugo)
+SELECT 
+    a.numero,
+    LPAD('*', ((p.lon - 3.294900) * 10000)::INTEGER, ' ') as visualisation_lon,
+    ROUND(p.lon::numeric, 6) as longitude,
+    ROUND(p.lat::numeric, 6) as latitude
+FROM adresse a
+JOIN voie v ON a.id_voie = v.id
+JOIN position p ON a.id_position = p.id
+WHERE v.nom_voie = 'Rue Victor Hugo'
+ORDER BY a.numero::INTEGER;
+
+DO $$
+BEGIN
+    RAISE NOTICE '✅ Échantillon de test RÉALISTE inséré avec succès !';
+    RAISE NOTICE '📊 Basé sur les vraies données BAN de Abeilhan (34)';
+    RAISE NOTICE '';
+    RAISE NOTICE '📍 34 adresses réparties sur 5 voies';
+    RAISE NOTICE '🏠 Toutes les adresses sont certifiées par la commune';
+    RAISE NOTICE '🗺️  Coordonnées GPS réelles (Lambert 93 + WGS84)';
+    RAISE NOTICE '📮 Parcelles cadastrales présentes sur certaines adresses';
+    RAISE NOTICE '🎯 Mix de types de position : entrée + segment';
+    RAISE NOTICE '';
+END $$;

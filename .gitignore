@@ -1,0 +1,24 @@
+# Données CSV (volumineuses)
+data/*.csv
+*.csv
+
+# Fichiers de sauvegarde
+*.bak
+*.backup
+*.sql~
+
+# Logs
+*.log
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+.env.local
