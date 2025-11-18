@@ -369,7 +369,7 @@ SELECT COUNT(*) as nb_adresses FROM adresse;
 SELECT * FROM adresse LIMIT 10;
 
 -- ============================================================================
--- ÉTAPE 10 : Statistiques et vérifications
+-- ÉTAPE 10 : Statistiques et vérifications (La j'controle plus rien j'voulais juste avoir des stats)
 -- ============================================================================
 
 -- ============================================================================
