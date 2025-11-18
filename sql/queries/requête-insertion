@@ -198,7 +198,7 @@ WHERE numero IS NULL OR TRIM(numero) = '';
 DELETE FROM adresse
 WHERE numero IS NULL OR TRIM(numero) = '';
 
--- 3.4 Supprimer les adresses sans voie ET sans lieu-dit
+-- 3.4 Supprimer les adresses sans voie ET sans lieu-dit.
 DELETE FROM adresse
 WHERE id_voie IS NULL AND (nom_ld IS NULL OR TRIM(nom_ld) = '');
 
